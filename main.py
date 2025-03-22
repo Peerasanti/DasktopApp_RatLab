@@ -1,13 +1,15 @@
 from tkinter import *
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from tkinter.ttk import Combobox, Style
 from PIL import Image, ImageTk
 import os
 import cv2
 import numpy as np
 
+
 from utils import *
 from validate import *
+from detection import *
 
 
 window_width = 980
@@ -100,6 +102,7 @@ def save():
                 save_path = os.path.join(folder_path, f"{output_name}.csv")
                 continue_button.place(x=750, y=590, width=80, height=30)
                 warning_label.place_forget()
+                messagebox.showinfo("บันทึกข้อมูลเรียบร้อย", "ข้อมูลถูกบันทึกเรียบร้อยแล้ว")
         else:
             warning_label.config(text="โปรดกรอกรายละเอียดการทดลองให้ครบ", fg="red")
             warning_label.place(x=570, y=630, width=250, height=25)
@@ -108,8 +111,48 @@ def save():
         warning_label.place(x=570, y=630, width=250, height=25)
 
 def next_step():
-    pass
+    global file_path
+    new_window = Toplevel(window)
+    new_window.title("Rat Lab")
+    new_window.state("zoomed")
 
+    video_label = Label(new_window)
+    video_label.pack(side=LEFT)
+
+    # สร้างอินสแตนซ์ของ VideoDetection
+    detector = VideoDetection(file_path, new_window, video_label)
+
+    def drawing():
+        if detector.is_drawing :
+            detector.is_drawing = False
+            start_button.config(text="Start Drawing")
+            new_window.config(cursor="arrow")
+        else:
+            detector.is_drawing = True
+            start_button.config(text="Stop Drawing")
+            new_window.config(cursor="cross")
+
+    start_button = Button(new_window, text="Start Drawing", command=drawing, bg="white", fg="black")
+    start_button.place(x=20, y=730, width=150, height=40)
+
+    # ผูกเหตุการณ์
+    video_label.bind("<Button-1>", detector.mouse_callback)
+    video_label.bind("<Button-3>", detector.mouse_callback)
+    video_label.bind("<Motion>", detector.mouse_callback)
+    new_window.bind("<KeyPress>", detector.key_handler)
+
+    # จัดการการปิดหน้าต่าง
+    new_window.protocol("WM_DELETE_WINDOW", detector.cleanup)
+
+    # เริ่มอัปเดตวิดีโอ
+    detector.update_video()
+
+
+
+
+
+
+### ส่วนของ GUI ในหน้าแรก ###
 window.bind("<Control-s>", select_folder)
 window.bind("<Escape>", close_window)
 menu_item = Menu()
@@ -138,8 +181,8 @@ select_file_button.place(x=50, y=590, width=80, height=30)
 or_label = Label(window, text="หรือ")
 or_label.place(x=150, y=595)
 
-cam_button = Button(window, text="เปิดกล้องด้วย IP Camera")
-cam_button.place(x=200, y=590, width=130, height=30)
+cam_button = Button(window, text="เชื่อมต่อกล้องด้วย IP Camera")
+cam_button.place(x=200, y=590, width=150, height=30)
 
 path_label = Label(window, text="ยังไม่ได้เลือกไฟล์")
 path_label.place(x=50, y=560)
@@ -148,8 +191,12 @@ folder_label = Label(window, text="ยังไม่ได้เลือกโ
 folder_label.place(x=570, y=560, width=250, height=25)
 
 warning_label = Label(window, text="โปรดกรอกรายละเอียดการทดลองให้ครบ", fg="red", anchor="w")
-explain_label = Label(window, text=f"* ต้องใช้ชื่อไฟล์ที่มีอักษรและตัวเลขเท่านั้น\n       * ต้องกรอกข้อมูลลงในช่องที่มีสีพื้นหลังให้ครบ\n    * ต้องกรอกข้อมูลให้ตรงตามรูปแบที่กำหนด", fg="red", anchor="w")
-explain_label.place(x=30, y=630, width=300, height=50)
+explain_label = Label(window, text="* ต้องใช้ชื่อไฟล์ที่มีอักษรและตัวเลขเท่านั้น\n"
+                                   "* ต้องกรอกข้อมูลลงในช่องที่มีสีพื้นหลังให้ครบ\n"
+                                   "* ต้องกรอกข้อมูลให้ตรงตามรูปแบบที่กำหนด\n"
+                                   "* หากไม่มีข้อมูลให้เว้นว่างหรือใส่ \"-\"", 
+                      fg="red", anchor="w", justify="left")
+explain_label.place(x=50, y=630, width=300, height=70)
 
 
 ### ส่วนของการกรอกรายละเอียดการทดลอง ###
@@ -223,5 +270,6 @@ select_folder_button = Button(window, text="เลือกโฟลเดอร
 select_folder_button.place(x=570, y=520, width=130, height=30)
 
 continue_button = Button(window, text="ดําเนินการต่อ", command=next_step)
+continue_button.place(x=750, y=590, width=80, height=30)
 
 window.mainloop()

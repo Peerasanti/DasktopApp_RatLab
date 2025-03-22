@@ -10,6 +10,8 @@ def is_valid_filename(filename):
     return bool(filename and not re.search(invalid_chars, filename))
 
 def is_valid_weight(weight):
+    if not weight or weight == '-':
+        return True
     try:
         w = float(weight)
         return w > 0
@@ -17,6 +19,8 @@ def is_valid_weight(weight):
         return False
 
 def is_valid_time(time_str):
+    if not time_str or time_str == '-':
+        return True
     pattern = r"^\d{2}:\d{2}$"
     if re.match(pattern, time_str):
         hours, minutes = map(int, time_str.split(":"))
@@ -24,6 +28,8 @@ def is_valid_time(time_str):
     return False
 
 def is_valid_date(date_str):
+    if not date_str or date_str == '-':
+        return True
     try:
         day, month, year = date_str.split()
         day = int(day)
