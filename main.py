@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 
 from utils import *
+from validate import *
 
 
 window_width = 980
@@ -79,23 +80,26 @@ def clear():
 
 def save():
     global output_name, file_path, folder_path, save_path
-    output_name = name_entry.get()
-    rat_ID = rat_entry.get()
-    weight = weight_entry.get()
-    sex = sex_entry.get()
-    map = map_entry.get()
-    pill = pill_entry.get()
-    time = time_entry.get()
-    date = date_entry.get()
+    output_name = name_entry.get().strip()
+    rat_ID = rat_entry.get().strip()
+    weight = weight_entry.get().strip()
+    sex = sex_entry.get().strip()
+    map = map_entry.get().strip()
+    pill = pill_entry.get().strip()
+    time = time_entry.get().strip()
+    date = date_entry.get().strip()
     note = note_entry.get("1.0", "end-1c").strip()
 
     if file_path and folder_path:
         if output_name and rat_ID and sex and map and pill:
-            save_path = os.path.join(folder_path, f"{output_name}.csv")
-
-
-            continue_button.place(x=750, y=590, width=80, height=30)
-            warning_label.place_forget()
+            errors = validate_data(output_name, weight, time, date)
+            if errors:
+                warning_label.config(text="\n".join(errors), fg="red")
+                warning_label.place(x=570, y=630, width=250, height=25)
+            else:
+                save_path = os.path.join(folder_path, f"{output_name}.csv")
+                continue_button.place(x=750, y=590, width=80, height=30)
+                warning_label.place_forget()
         else:
             warning_label.config(text="โปรดกรอกรายละเอียดการทดลองให้ครบ", fg="red")
             warning_label.place(x=570, y=630, width=250, height=25)
