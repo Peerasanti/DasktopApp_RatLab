@@ -24,7 +24,6 @@ window.resizable(False, False)
 window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
 ### global variable ###
-video_time = ""
 output_name = ""
 cap = None
 is_playing = False
@@ -205,8 +204,6 @@ def next_step():
 
     detector.update_video()
 
-print(video_time)
-
 ### ส่วนของ GUI ในหน้าแรก ###
 window.bind("<Control-s>", select_folder)
 window.bind("<Escape>", close_window)
@@ -325,6 +322,6 @@ select_folder_button = Button(window, text="เลือกโฟลเดอร
 select_folder_button.place(x=570, y=520, width=130, height=30)
 
 continue_button = Button(window, text="ดําเนินการต่อ  -->", command=next_step)
-continue_button.place(x=750, y=590, width=100, height=30)
+# continue_button.place(x=750, y=590, width=100, height=30)
 
 window.mainloop()
