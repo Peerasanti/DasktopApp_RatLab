@@ -368,8 +368,8 @@ if __name__ == "__main__":
     print('Test model')
 
     # test_model(model, video_path)
-    overlay_object_test(model, video_path)
-    # find_center_by_overlay(model, video_path) # use only y-maze
+    # overlay_object_test(model, video_path)
+    find_center_by_overlay(model, video_path) # use only y-maze
     # rat_path(model, video_path)
     # path_heatmap(model, video_path)
 

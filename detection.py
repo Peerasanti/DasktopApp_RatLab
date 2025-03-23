@@ -10,13 +10,15 @@ import tensorflow as tf
 class VideoDetection:
     def __init__(self, file_path, window, label):
         self.cap = cv2.VideoCapture(file_path)
+        self.fps = round(self.cap.get(cv2.CAP_PROP_FPS), 1)
         self.window = window
         self.label = label
         self.frame_width = 1150
         self.frame_height = 800
         self.speed = 20
-        self.position_x = 0
-        self.position_y = 0
+        self.position_x = None
+        self.position_y = None
+        self.time_past = None
         
         if not self.cap.isOpened():
             print("Error: ไม่สามารถเปิดไฟล์วิดีโอได้")
@@ -89,7 +91,15 @@ class VideoDetection:
         input_frame = np.expand_dims(input_frame, axis=0)
         
         result = np.squeeze(self.model.predict(input_frame, verbose=0)[0])
-        mask = resize(result, (self.frame_height, self.frame_width)) > 0.5
+        mask = resize(result, (self.frame_height, self.frame_width), anti_aliasing=False) > 0.5
+
+        coords = np.column_stack(np.where(mask)) 
+        if len(coords) > 0: 
+            centroid = np.mean(coords, axis=0).astype(int) 
+            self.position_x, self.position_y = centroid[1], centroid[0] 
+        else:
+            self.position_x, self.position_y = None, None
+
         return mask
     
     def overlay_mask(self, img, mask, color=(0, 255, 200), alpha=0.5):
@@ -106,11 +116,15 @@ class VideoDetection:
                 return
             frame = cv2.resize(frame, (self.frame_width, self.frame_height))
             self.current_frame = frame.copy()
+        
+        current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
+        self.time_past = round(current_frame / self.fps, 2)
 
         img = self.current_frame.copy()
         if self.detected:
             mask = self.unet_detect(img)
             img = self.overlay_mask(img, mask)
+            cv2.circle(img, (self.position_x, self.position_y), 5, (0, 0, 255), -1)
 
         self.draw_polygons(img)
 
@@ -133,10 +147,13 @@ class VideoDetection:
             cv2.putText(img, "Press 'Down' to Speed Down", (20, 160), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
             
-            cv2.putText(img, f"Speed: {self.speed} ms", (1000, 50),
+            cv2.putText(img, f"Speed: {self.speed} ms", (980, 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
             
             cv2.putText(img, "Press 'T' to Detect", (20, 180),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            
+            cv2.putText(img, f"Time: {self.time_past} second", (980, 80),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
         # แปลงภาพเป็น PhotoImage
