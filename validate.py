@@ -21,11 +21,11 @@ def is_valid_weight(weight):
 def is_valid_time(time_str):
     if not time_str or time_str == '-':
         return True
-    pattern = r"^\d{2}:\d{2}$"
-    if re.match(pattern, time_str):
-        hours, minutes = map(int, time_str.split(":"))
-        return 0 <= hours <= 23 and 0 <= minutes <= 59
-    return False
+    try:
+        minutes = int(time_str)
+        return minutes > 0
+    except ValueError:
+        return False
 
 def is_valid_date(date_str):
     if not date_str or date_str == '-':
@@ -45,7 +45,7 @@ def validate_data(output_name, weight, time, date):
     if not is_valid_weight(weight):
         errors.append("น้ำหนักต้องเป็นตัวเลขบวก")
     if not is_valid_time(time):
-        errors.append("เวลาต้องอยู่ในรูปแบบ HH:MM (เช่น 14:30)")
+        errors.append("เวลาต้องมีค่ามากกว่า 0 (เช่น 5)")
     if not is_valid_date(date):
         errors.append("วันที่ต้องอยู่ในรูปแบบ DD เดือน YYYY (เช่น 22 มีนาคม 2568)")
     return errors

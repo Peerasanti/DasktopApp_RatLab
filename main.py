@@ -23,13 +23,23 @@ window.title("Rat Lab")
 window.resizable(False, False)
 window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
+### global variable ###
+video_time = ""
 output_name = ""
 cap = None
 is_playing = False
 file_path = ""
 folder_path = ""
 save_path = ""
+output_name = ""
+rat_ID = ""
+weight = 0
+time = ""
+date = ""
+note = ""
+data = {}
 
+### window menu bar ###
 menu_bar = Menu()
 window.config(menu=menu_bar)
 
@@ -45,6 +55,7 @@ def select_file():
     print("ไฟล์ที่เลือก:", file_path)
     if file_path and file_path.endswith(".mp4"): 
         cap = cv2.VideoCapture(file_path)
+
         if cap.isOpened():
             ret, frame = cap.read()
             if ret:
@@ -81,16 +92,16 @@ def clear():
     sex_entry.current(0)
 
 def save():
-    global output_name, file_path, folder_path, save_path
+    global output_name, file_path, folder_path, save_path, data
     output_name = name_entry.get().strip()
     rat_ID = rat_entry.get().strip()
-    weight = weight_entry.get().strip()
-    sex = sex_entry.get().strip()
-    map = map_entry.get().strip()
-    pill = pill_entry.get().strip()
-    time = time_entry.get().strip()
-    date = date_entry.get().strip()
-    note = note_entry.get("1.0", "end-1c").strip()
+    weight = weight_entry.get().strip() or '-'
+    sex = sex_entry.get().strip() 
+    map = map_entry.get().strip() 
+    pill = pill_entry.get().strip() or '-'
+    time = time_entry.get().strip() or '-'
+    date = date_entry.get().strip() or '-'
+    note = note_entry.get("1.0", "end-1c").strip() or '-'
 
     if file_path and folder_path:
         if output_name and rat_ID and sex and map and pill:
@@ -102,22 +113,40 @@ def save():
                 save_path = os.path.join(folder_path, f"{output_name}.csv")
                 continue_button.place(x=750, y=590, width=80, height=30)
                 warning_label.place_forget()
+                data = {
+                    "output_name": output_name,
+                    "file_path": file_path,
+                    "folder_path": folder_path,
+                    "rat_ID": rat_ID,
+                    "weight": weight,
+                    "sex": sex,
+                    "map": map,
+                    "pill": pill,   
+                    "time": time,
+                    "date": date,
+                    "note": note
+                }
                 messagebox.showinfo("บันทึกข้อมูลเรียบร้อย", "ข้อมูลถูกบันทึกเรียบร้อยแล้ว")
         else:
             warning_label.config(text="โปรดกรอกรายละเอียดการทดลองให้ครบ", fg="red")
             warning_label.place(x=570, y=630, width=250, height=25)
     else: 
-        warning_label.config(text="โปรดเลือกไฟล์และโฟลเดอร์", fg="red")
+        warning_label.config(text="โปรดเลือกไฟล์และโฟลเดอร์สำหรับบันทึกผลลัพธ์", fg="red")
         warning_label.place(x=570, y=630, width=250, height=25)
 
 def next_step():
-    global file_path
+    global file_path, data
     new_window = Toplevel(window)
     new_window.title("Rat Lab")
     new_window.state("zoomed")
 
+    custom_font = ("Helvetica", 10)
+
     video_label = Label(new_window)
     video_label.pack(side=LEFT)
+
+    canvas = Canvas(new_window, width=2, bg="black", height=1000)
+    canvas.place(x=1150, y=0)
 
     # สร้างอินสแตนซ์ของ VideoDetection
     detector = VideoDetection(file_path, new_window, video_label)
@@ -125,32 +154,58 @@ def next_step():
     def drawing():
         if detector.is_drawing :
             detector.is_drawing = False
-            start_button.config(text="Start Drawing")
+            start_button.config(text="Start Drawing", bg="#58d05a")
             new_window.config(cursor="arrow")
         else:
             detector.is_drawing = True
-            start_button.config(text="Stop Drawing")
+            start_button.config(text="Stop Drawing", bg="#FF7F7F")
             new_window.config(cursor="cross")
 
-    start_button = Button(new_window, text="Start Drawing", command=drawing, bg="white", fg="black")
+    start_button = Button(new_window, text="Start Drawing", command=drawing,
+                          bg="#58d05a",
+                          fg="white",
+                          font=custom_font, 
+                          activebackground="#FFFFE0")
+    
     start_button.place(x=20, y=730, width=150, height=40)
 
-    # ผูกเหตุการณ์
+    clear_area = Button(new_window, text="Clear All Area", command=detector.clear_area, 
+                        bg="#58d05a", 
+                        fg="white",
+                        font=custom_font,
+                        activebackground="#FFFFE0")
+    
+    clear_area.place(x=180, y=730, width=150, height=40)
+
+    back_button = Button(new_window, text="Back", command=new_window.destroy,
+                         bg="white", 
+                         fg="black",
+                         font=custom_font,
+                         activebackground="#FFFFE0")
+    
+    back_button.place(x=1180, y=730, width=150, height=40)
+
+    finish_button = Button(new_window, text="Finish" ,
+                           bg="white", 
+                           fg="black",
+                           font=custom_font,
+                           activebackground="#FFFFE0")
+    
+    finish_button.place(x=1340, y=730, width=150, height=40)
+
+    title_label = Label(new_window, text="ข้อมูลการทดลอง", font=("Helvetica", 15))
+    title_label.place(x=1180, y=20)
+
     video_label.bind("<Button-1>", detector.mouse_callback)
     video_label.bind("<Button-3>", detector.mouse_callback)
     video_label.bind("<Motion>", detector.mouse_callback)
     new_window.bind("<KeyPress>", detector.key_handler)
 
-    # จัดการการปิดหน้าต่าง
     new_window.protocol("WM_DELETE_WINDOW", detector.cleanup)
 
-    # เริ่มอัปเดตวิดีโอ
     detector.update_video()
 
-
-
-
-
+print(video_time)
 
 ### ส่วนของ GUI ในหน้าแรก ###
 window.bind("<Control-s>", select_folder)
@@ -239,7 +294,7 @@ pill_label.place(x=570, y=200)
 pill_entry = Entry(window)
 pill_entry.place(x=690, y=200, width=250, height=25)
 
-time_label = Label(window, text="เวลาที่ใช้ในการทดลอง : ")
+time_label = Label(window, text="เวลาที่ใช้ (นาที) : ")
 time_label.place(x=570, y=230)
 
 time_entry = Entry(window)
@@ -252,7 +307,7 @@ date_entry = Entry(window)
 date_entry.insert(0, get_thai_date())
 date_entry.place(x=690, y=260, width=250, height=25)
 
-note_label = Label(window, text="หมายเหตุ : ")
+note_label = Label(window, text="หมายเหตุเพิ่มเติม : ")
 note_label.place(x=570, y=290)
 
 note_entry = Text(window, wrap="word")
@@ -269,7 +324,7 @@ clear_button.place(x=660, y=590, width=80, height=30)
 select_folder_button = Button(window, text="เลือกโฟลเดอร์บันทึกผลลัพธ์", command=select_folder)
 select_folder_button.place(x=570, y=520, width=130, height=30)
 
-continue_button = Button(window, text="ดําเนินการต่อ", command=next_step)
-continue_button.place(x=750, y=590, width=80, height=30)
+continue_button = Button(window, text="ดําเนินการต่อ  -->", command=next_step)
+continue_button.place(x=750, y=590, width=100, height=30)
 
 window.mainloop()
