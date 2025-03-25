@@ -1,16 +1,21 @@
 from tkinter import *
 from tkinter import filedialog, messagebox
 from tkinter.ttk import Combobox, Style
+from datetime import datetime
+from tkcalendar import DateEntry
 from PIL import Image, ImageTk
+import socket
 import os
 import cv2
 import numpy as np
+import locale
 
 
 from utils import *
 from validate import *
 from detection import *
 
+locale.setlocale(locale.LC_TIME, 'th_TH.UTF-8')
 
 window_width = 980
 window_height = 720
@@ -37,6 +42,7 @@ time = ""
 date = ""
 note = ""
 data = {}
+camera_id = ""
 
 ### window menu bar ###
 menu_bar = Menu()
@@ -83,45 +89,46 @@ def select_folder():
         folder_label.config(text="ไม่ได้เลือกโฟลเดอร์")
 
 def clear():
-    path_label.config(text="ยังไม่ได้เลือกไฟล์")
+    path_label.config(text="ยังไม่ได้เลือกไฟล์", fg="black")
+    folder_label.config(text="ยังไม่ได้เลือกโฟลเดอร์", fg="black")
     video_label.config(image="")
     name_entry.delete(0, END)
     rat_entry.delete(0, END)
-    weight_entry.delete(0, END)
     sex_entry.current(0)
+    map_entry.current(0)
+    pill_entry.delete(0, END)
+    date_entry.delete(0, END)
+    note_entry.delete("1.0", "end")
 
 def save():
     global output_name, file_path, folder_path, save_path, data
     output_name = name_entry.get().strip()
     rat_ID = rat_entry.get().strip()
-    weight = weight_entry.get().strip() or '-'
     sex = sex_entry.get().strip() 
     map = map_entry.get().strip() 
     pill = pill_entry.get().strip() or '-'
-    time = time_entry.get().strip() or '-'
     date = date_entry.get().strip() or '-'
     note = note_entry.get("1.0", "end-1c").strip() or '-'
+    print(f"วันที่: {date}")
 
     if file_path and folder_path:
         if output_name and rat_ID and sex and map and pill:
-            errors = validate_data(output_name, weight, time, date)
+            errors = validate_data(output_name, date)
             if errors:
                 warning_label.config(text="\n".join(errors), fg="red")
-                warning_label.place(x=570, y=630, width=250, height=25)
+                warning_label.place(x=570, y=630, width=350, height=25)
             else:
                 save_path = os.path.join(folder_path, f"{output_name}.csv")
-                continue_button.place(x=750, y=590, width=80, height=30)
+                continue_button.place(x=750, y=590, width=100, height=30)
                 warning_label.place_forget()
                 data = {
                     "output_name": output_name,
                     "file_path": file_path,
                     "folder_path": folder_path,
                     "rat_ID": rat_ID,
-                    "weight": weight,
                     "sex": sex,
                     "map": map,
                     "pill": pill,   
-                    "time": time,
                     "date": date,
                     "note": note
                 }
@@ -133,11 +140,13 @@ def save():
         warning_label.config(text="โปรดเลือกไฟล์และโฟลเดอร์สำหรับบันทึกผลลัพธ์", fg="red")
         warning_label.place(x=570, y=630, width=250, height=25)
 
+
 def next_step():
     global file_path, data
     new_window = Toplevel(window)
     new_window.title("Rat Lab")
     new_window.state("zoomed")
+    new_window.resizable(False, False)
 
     custom_font = ("Helvetica", 10)
 
@@ -195,6 +204,16 @@ def next_step():
     title_label = Label(new_window, text="ข้อมูลการทดลอง", font=("Helvetica", 15))
     title_label.place(x=1180, y=20)
 
+    data_label = Label(new_window, text=f"ชื่อการทดลอง : {data['output_name']}\n"
+                                        f"ชื่อหนูทดลอง : {data['rat_ID']}\n"
+                                        f"เพศหนูทดลอง : {data['sex']}\n"
+                                        f"แผนที่ทดลอง : {data['map']}\n"
+                                        f"ยาทดลอง : {data['pill']}\n"
+                                        f"วันที่ทดลอง : {data['date']}\n"
+                                        f"หมายเหตุ : {data['note']}", 
+                        font=("Helvetica", 12), anchor=W, justify=LEFT)
+    data_label.place(x=1180, y=50)
+
     video_label.bind("<Button-1>", detector.mouse_callback)
     video_label.bind("<Button-3>", detector.mouse_callback)
     video_label.bind("<Motion>", detector.mouse_callback)
@@ -204,9 +223,93 @@ def next_step():
 
     detector.update_video()
 
+def update_video():
+    if cap and cap.isOpened():
+        ret, frame = cap.read()
+        if ret:
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_rgb = cv2.resize(frame_rgb, (video_width, video_height))
+            img = Image.fromarray(frame_rgb)
+            photo = ImageTk.PhotoImage(image=img)
+            video_label.config(image=photo)
+            video_label.image = photo
+        window.after(10, update_video) 
+
+def is_valid_ip(ip):
+    ip_pattern = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
+    if ip_pattern.match(ip):
+        return all(0 <= int(x) <= 255 for x in ip.split("."))
+    return False
+
+def connect_camera(ip_address):
+    global cap
+    camera_url = f"http://{ip_address}/video"
+
+    if not is_valid_ip(ip_address):
+        try:
+            socket.gethostbyname(ip_address)
+        except socket.gaierror:
+            path_label.config(text=f"ไม่สามารถเชื่อมต่อไปที่ '{ip_address}' ได้", fg="red")
+            return
+
+    try:
+        cv2.setUseOptimized(True)
+        cap = cv2.VideoCapture(camera_url)
+        cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 1000)
+        
+        if not cap.isOpened():
+            path_label.config(text="ไม่สามารถเชื่อมต่อกล้องได้", fg="red")
+            print("ไม่สามารถเชื่อมต่อกล้องได้")
+            camera_window() 
+            return
+        
+        path_label.config(text=f"เชื่อมต่อไปที่ {camera_url}", fg="green")
+        update_video()
+
+    except Exception as e:
+        path_label.config(text=f"เกิดข้อผิดพลาด: {str(e)}", fg="red")
+        print(f"Error: {str(e)}")
+        camera_window()
+
+def camera_window():
+    ip_window = Toplevel(window)
+    ip_window.title("กรอก IP Camera")
+    ip_window.geometry("300x150")
+
+    label = Label(ip_window, text="กรุณากรอก IP Address ของกล้อง: ")
+    label.pack(pady=10)
+
+    ip_entry = Entry(ip_window, width=30)
+    ip_entry.pack(pady=10)
+
+    def submit_ip():
+        ip = ip_entry.get() 
+        if ip:
+            ip_window.destroy() 
+            connect_camera(ip)  
+    
+    button_frame = Frame(ip_window)
+    button_frame.pack(pady=10)
+
+    submit_button = Button(button_frame, text="ยืนยัน", command=submit_ip)
+    submit_button.pack(side='left', padx=10)
+
+    cancel_button = Button(button_frame, text="ยกเลิก", command=ip_window.destroy)
+    cancel_button.pack(side='left', padx=10)
+
+### for testing only ###
+def skip_form(event):
+    name_entry.insert(0, "Rat Lab 001")
+    rat_entry.insert(0, "Rat 001")
+    sex_entry.insert(0, "เพศผู้")
+    map_entry.insert(0, "X-maze")
+    pill_entry.insert(0, "Pill 001")
+    note_entry.insert("1.0", "Note")
+
 ### ส่วนของ GUI ในหน้าแรก ###
 window.bind("<Control-s>", select_folder)
 window.bind("<Escape>", close_window)
+window.bind("<S>", skip_form)
 menu_item = Menu()
 menu_item.add_command(label="เปิด", command=select_file)
 menu_item.add_command(label="บันทึกที่", command=select_folder, accelerator="Ctrl + S")
@@ -233,7 +336,7 @@ select_file_button.place(x=50, y=590, width=80, height=30)
 or_label = Label(window, text="หรือ")
 or_label.place(x=150, y=595)
 
-cam_button = Button(window, text="เชื่อมต่อกล้องด้วย IP Camera")
+cam_button = Button(window, text="เชื่อมต่อกล้องด้วย IP Camera", command=camera_window)
 cam_button.place(x=200, y=590, width=150, height=30)
 
 path_label = Label(window, text="ยังไม่ได้เลือกไฟล์")
@@ -264,51 +367,42 @@ rat_label.place(x=570, y=80)
 rat_entry = Entry(window)
 rat_entry.place(x=690, y=80, width=250, height=25)
 
-weight_label = Label(window, text="น้ําหนักหนูทดลอง : ")
-weight_label.place(x=570, y=110)
-
-weight_entry = Entry(window)
-weight_entry.place(x=690, y=110, width=250, height=25)
-
 sex_label = Label(window, text="เพศหนูทดลอง : ", bg="#FFFFCC")
-sex_label.place(x=570, y=140)
+sex_label.place(x=570, y=110)
 
-sex = ["เลือกเพศของหนูทดลอง", "เพศผู้", "เพศเมีย"]
+sex = ["", "เพศผู้", "เพศเมีย"]
 sex_entry = Combobox(window, value=sex)
-sex_entry.place(x=690, y=140, width=250, height=25)
+sex_entry.place(x=690, y=110, width=250, height=25)
 sex_entry.current(0)
 
 map_label = Label(window, text="แผนที่ที่ใช้ทดลอง : ", bg="#FFFFCC")
-map_label.place(x=570, y=170)
+map_label.place(x=570, y=140)
 
-map = ["X-maze", "Y-maze", "Water maze"]
+map = ["", "X-maze", "Y-maze", "Water maze"]
 map_entry = Combobox(window, value=map, state="normal")
-map_entry.place(x=690, y=170, width=250, height=25)
+map_entry.place(x=690, y=140, width=250, height=25)
 
 pill_label = Label(window, text="ยาที่ใช้ในการทดลอง : ")
-pill_label.place(x=570, y=200)
+pill_label.place(x=570, y=170)
 
 pill_entry = Entry(window)
-pill_entry.place(x=690, y=200, width=250, height=25)
-
-time_label = Label(window, text="เวลาที่ใช้ (นาที) : ")
-time_label.place(x=570, y=230)
-
-time_entry = Entry(window)
-time_entry.place(x=690, y=230, width=250, height=25)
+pill_entry.place(x=690, y=170, width=250, height=25)
 
 date_label = Label(window, text="วันที่ทดลอง : ")
-date_label.place(x=570, y=260)
+date_label.place(x=570, y=200)
 
-date_entry = Entry(window)
-date_entry.insert(0, get_thai_date())
-date_entry.place(x=690, y=260, width=250, height=25)
+date_entry = DateEntry(window, locale='th_TH', date_pattern='dd-mm-yyyy')
+date_entry.place(x=690, y=200, width=250, height=25)
+current_date = datetime.now()
+thai_year = current_date.year + 543  
+thai_date = current_date.replace(year=thai_year)  
+date_entry.set_date(thai_date)
 
 note_label = Label(window, text="หมายเหตุเพิ่มเติม : ")
-note_label.place(x=570, y=290)
+note_label.place(x=570, y=230)
 
 note_entry = Text(window, wrap="word")
-note_entry.place(x=690, y=290, width=250, height=200)
+note_entry.place(x=690, y=230, width=250, height=200)
 
 
 ### ปุ่มบันทึก ล้างทั้งหมด ดําเนินการต่อ เพื่อใช้กับส่วนกรอกข้อมูลข้างบน ###

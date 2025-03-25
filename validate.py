@@ -1,51 +1,24 @@
 import re
-
-thai_months = [
-    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
-]
+from datetime import datetime
 
 def is_valid_filename(filename):
-    invalid_chars = r'[<>:"/\\|?*]'
+    invalid_chars = r'[<>:"/\\|?*-]'
     return bool(filename and not re.search(invalid_chars, filename))
 
-def is_valid_weight(weight):
-    if not weight or weight == '-':
-        return True
-    try:
-        w = float(weight)
-        return w > 0
-    except ValueError:
-        return False
-
-def is_valid_time(time_str):
-    if not time_str or time_str == '-':
-        return True
-    try:
-        minutes = int(time_str)
-        return minutes > 0
-    except ValueError:
-        return False
-
 def is_valid_date(date_str):
-    if not date_str or date_str == '-':
+    if not date_str or date_str == '-': 
         return True
     try:
-        day, month, year = date_str.split()
-        day = int(day)
-        year = int(year)
-        return (1 <= day <= 31) and (month in thai_months) and (2500 <= year <= 3000)
+        day, month, year = map(int, date_str.split('-'))
+        datetime(year, month, day) 
+        return 2500 <= year <= 3000  
     except (ValueError, IndexError):
         return False
 
-def validate_data(output_name, weight, time, date):
+def validate_data(output_name, date):
     errors = []
     if not is_valid_filename(output_name):
         errors.append("ชื่อไฟล์ไม่ถูกต้อง (ห้ามใช้ <>:\"/\\|?*)")
-    if not is_valid_weight(weight):
-        errors.append("น้ำหนักต้องเป็นตัวเลขบวก")
-    if not is_valid_time(time):
-        errors.append("เวลาต้องมีค่ามากกว่า 0 (เช่น 5)")
     if not is_valid_date(date):
-        errors.append("วันที่ต้องอยู่ในรูปแบบ DD เดือน YYYY (เช่น 22 มีนาคม 2568)")
+        errors.append("วันที่ต้องอยู่ในรูปแบบ DD/MM/YYYY (เช่น 25-03-2568)")
     return errors

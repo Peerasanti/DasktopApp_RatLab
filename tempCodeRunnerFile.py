@@ -1,5 +1,3 @@
-frame = LabelFrame(window, text="วิดีโอ", borderwidth=2, relief="groove")
-frame.place(x=50,  y=50, width=500, height=500)
-
-video_label = Label(frame)
-video_label.place(x=0, y=0, width=400, height=412)
+date_entry = DateEntry(window, locale='th_TH', date_pattern='dd-mm-yyyy')
+date_entry.place(x=690, y=200, width=250, height=25)
+date_entry.set_date(datetime.now())
