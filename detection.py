@@ -5,6 +5,8 @@ import numpy as np
 from PIL import Image, ImageTk
 from skimage.transform import resize
 import tensorflow as tf
+import csv
+from tkinter import messagebox
 
 
 class VideoDetection:
@@ -14,7 +16,7 @@ class VideoDetection:
         self.window = window
         self.label = label
         self.frame_width = 1150
-        self.frame_height = 800
+        self.frame_height = 850
         self.speed = 20
         self.position_x = None
         self.position_y = None
@@ -43,7 +45,7 @@ class VideoDetection:
         self.is_playing = False
         self.is_drawing = False
         self.show_ui = True
-        self.detected = True
+        self.detected = False
 
         self.model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model", "model_for_rat_V2.keras")
         try:
@@ -188,3 +190,18 @@ class VideoDetection:
         self.polygons = [[]]
         self.is_closed = [False]
         self.current_polygon = 0
+
+    def save_to_csv(self, data):
+        filename = os.path.join(data['folder_path'], f"{data['output_name']}.csv")
+        
+        os.makedirs(data['folder_path'], exist_ok=True)
+
+        with open(filename, 'w', newline='', encoding='utf-8-sig') as file:
+            writer = csv.writer(file)
+            for key, value in data.items():
+                writer.writerow([key, value])
+    
+        print(f"บันทึกข้อมูลลง {data['output_name']} เรียบร้อยแล้ว!")
+        stop = messagebox.askyesno("บันทึกแล้วหยุดการทำงาน", f"บันทึกข้อมูลลง {data['output_name']} เรียบร้อยแล้ว!\nต้องการจะหยุดโปรแกรมหรือไม่?")
+        if stop:
+            self.window.destroy()

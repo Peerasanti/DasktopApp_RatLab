@@ -148,6 +148,8 @@ def next_step():
     new_window.state("zoomed")
     new_window.resizable(False, False)
 
+    window.iconify()
+
     custom_font = ("Helvetica", 10)
 
     video_label = Label(new_window)
@@ -175,7 +177,7 @@ def next_step():
                           font=custom_font, 
                           activebackground="#FFFFE0")
     
-    start_button.place(x=20, y=730, width=150, height=40)
+    start_button.place(x=20, y=750, width=150, height=40)
 
     clear_area = Button(new_window, text="Clear All Area", command=detector.clear_area, 
                         bg="#58d05a", 
@@ -183,7 +185,7 @@ def next_step():
                         font=custom_font,
                         activebackground="#FFFFE0")
     
-    clear_area.place(x=180, y=730, width=150, height=40)
+    clear_area.place(x=180, y=750, width=150, height=40)
 
     back_button = Button(new_window, text="Back", command=new_window.destroy,
                          bg="white", 
@@ -191,15 +193,15 @@ def next_step():
                          font=custom_font,
                          activebackground="#FFFFE0")
     
-    back_button.place(x=1180, y=730, width=150, height=40)
+    back_button.place(x=1180, y=750, width=150, height=40)
 
-    finish_button = Button(new_window, text="Finish" ,
+    finish_button = Button(new_window, text="Finish" , command=lambda: detector.save_to_csv(data), 
                            bg="white", 
                            fg="black",
                            font=custom_font,
                            activebackground="#FFFFE0")
     
-    finish_button.place(x=1340, y=730, width=150, height=40)
+    finish_button.place(x=1340, y=750, width=150, height=40)
 
     title_label = Label(new_window, text="ข้อมูลการทดลอง", font=("Helvetica", 15))
     title_label.place(x=1180, y=20)
